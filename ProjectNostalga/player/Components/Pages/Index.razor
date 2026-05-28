@@ -1,0 +1,172 @@
+@page "/"
+
+@rendermode InteractiveServer
+
+@inject IJSRuntime JSRuntime
+@inject HttpClient HttpClient
+
+@using Microsoft.AspNetCore.SignalR.Client
+@using System.Text.Json
+@using System.Diagnostics
+
+
+<h1> Radio Player </h1>
+
+<audio id="audio">
+    <source src="http://localhost:8000/stream" type="audio/mpeg">
+</audio>
+
+
+<div> Current media playing: </div>
+
+<div> Artist: @CurrentArtist </div>
+
+<div> Track: @CurrentTrack </div>
+
+<div> Elapsed: @Elapsed / @Duration </div>
+
+<FluentProgress Width="200px" Stroke="@(ProgressStroke.Large)" @bind-value="Elapsed" max="@Duration"></FluentProgress>
+
+<FluentSlider Label="Volume" Min="0.0" Max="1.0" Step="0.1" @Value="Volume" @ValueChanged="SetVolume"></FluentSlider>
+
+<button @onclick="PlayAudioAsync"> Play Broadcast </button>
+
+<button @onclick="PauseAudioAsync"> Stop Broadcast </button>
+
+@code {
+    private string CurrentTrack { get; set; } = "Loading...";
+    private string CurrentArtist { get; set; } = "Loading...";
+    private int Duration { get; set; } = 0;
+    private int Elapsed { get; set; } = 0;
+    private double Volume { get; set; } = 0.5;
+    private HubConnection? _hubConnection;
+    private CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
+    private Stopwatch _stopwatch = new Stopwatch();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl("http://admin:5179/trackchangehub")
+            .Build();
+
+        _hubConnection.On<string>("TrackChanged", (metadataJson) =>
+        {
+            OnTrackChanged(metadataJson);
+        });
+
+        await _hubConnection.StartAsync();
+
+        var metadataJson = await HttpClient.GetStringAsync("http://liquidsoap:8080/metadata");
+        OnTrackChanged(metadataJson);
+    }
+
+    private static string GetValueFromMetadata(string[][] metadata, string key, string defaultValue = "Unknown")
+    {
+        return metadata.FirstOrDefault(kvp => kvp.Length > 1 && kvp[0] == key)?[1] ?? defaultValue;
+    }
+
+    private void OnTrackChanged(string metadataJson)
+    {
+        var metadata = JsonSerializer.Deserialize<string[][]>(metadataJson);
+        if (metadata != null)
+        {
+            CurrentArtist = GetValueFromMetadata(metadata, "artist", "Unknown Artist");
+            CurrentTrack = GetValueFromMetadata(metadata, "title", "Unknown Track");
+            var elapsed = GetValueFromMetadata(metadata, "elapsed", "0");
+            if (double.TryParse(elapsed, out var elapsedSeconds))
+            {
+                Elapsed = (int)elapsedSeconds;
+            }
+            string? duration = GetValueFromMetadata(metadata, "duration", "0");
+            if (double.TryParse(duration, out var durationSeconds))
+            {
+                Duration = (int)durationSeconds;
+            }
+            Console.WriteLine(value: $"Track changed: {CurrentArtist} - {CurrentTrack}, Elapsed: {Elapsed}, Duration: {Duration}");
+            InvokeAsync(StateHasChanged);
+            TickTimer();
+        }
+    }
+
+    [JSInvokable]
+    public Task OnMetadataChanged(string title)
+    {
+        Console.WriteLine($"Metadata changed: {title}");
+        return Task.CompletedTask;
+    }
+
+    private async Task PlayAudioAsync()
+    {
+        try
+        {
+            var dotNetRef = DotNetObjectReference.Create(this);
+            await JSRuntime.InvokeVoidAsync("startIcecastPlayer", "http://localhost:8000/stream", dotNetRef);
+            StateHasChanged();
+        }
+        catch (JSDisconnectedException)
+        {
+            Console.WriteLine("JSRuntime is disconnected. Cannot play audio.");
+            return;
+        }
+    }
+
+    private async Task PauseAudioAsync()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("pauseAudio");
+            StateHasChanged();
+        }
+        catch (JSDisconnectedException)
+        {
+            Console.WriteLine("JSRuntime is disconnected. Cannot pause audio.");
+            return;
+        }
+    }
+
+    private async Task SetVolumeAsync(double volume)
+    {
+        Volume = volume;
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("setVolume", volume);
+            StateHasChanged();
+        }
+        catch (JSDisconnectedException)
+        {
+            Console.WriteLine("JSRuntime is disconnected. Cannot set volume.");
+            return;
+        }
+    }
+
+    private void TickTimer()
+    {
+        _cancellationTokenSource?.Cancel();
+        _cancellationTokenSource = new CancellationTokenSource();
+        _ = TickInBackground(_cancellationTokenSource.Token);
+    }
+
+    private async Task TickInBackground(CancellationToken cancellationToken)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(100));
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        int elapsed = 0;
+
+        while (await timer.WaitForNextTickAsync(cancellationToken))
+        {
+            elapsed = (int)Math.Min(stopwatch.Elapsed.TotalSeconds, Duration);
+
+            if ( elapsed != Elapsed )
+            {
+                Elapsed = elapsed;
+                await InvokeAsync(StateHasChanged);
+            }
+
+            if (Elapsed >= Duration)
+            {
+                break;
+            }
+        }
+    }
+}
+

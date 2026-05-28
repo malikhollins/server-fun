@@ -1,0 +1,52 @@
+services:
+  liquidsoap:  
+    image: "savonet/liquidsoap:v2.4.x-latest"
+    container_name: liquidsoap
+    restart: always
+    volumes:
+      - ./liquidsoap/script.liq:/etc/liquidsoap/script.liq:ro
+      - ./music:/etc/music:rw
+    command: "/etc/liquidsoap/script.liq"
+    user: "liquidsoap:3000"
+    networks:
+      - radionetwork
+
+  icecast:
+    image: "infiniteproject/icecast:latest"
+    container_name: icecast
+    restart: always
+    volumes:
+      - ./icecast/icecast.xml:/usr/share/icecast/icecast.xml
+    ports:
+      - "8000:8000"
+    networks:
+      - radionetwork
+
+  admin:
+    build:
+      context: ./admin
+    volumes:
+      - ./music:/etc/music:rw
+    environment:
+      - ASPNETCORE_URLS=http://0.0.0.0:5179
+    ports:
+      - "5179:5179"
+    group_add: 
+      - "3000"
+    user: "1654:3000"
+    networks:
+      - radionetwork
+
+  player:
+    build:
+      context: ./player
+    environment:
+      - ASPNETCORE_URLS=http://0.0.0:5178
+    ports:
+      - "5178:5178"
+    networks:
+      - radionetwork
+
+networks:
+  radionetwork:
+    driver: bridge
