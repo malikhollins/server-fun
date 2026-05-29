@@ -1,8 +1,4 @@
 <icecast>
-    <changeowner>
-        <user>icecast</user>
-        <group>icecast</group>
-    </changeowner>
     <limits>
         <clients>100</clients>
         <sources>2</sources>
@@ -10,7 +6,6 @@
         <client-timeout>30</client-timeout>
         <header-timeout>15</header-timeout>
         <source-timeout>10</source-timeout>
-        <burst-on-connect>1</burst-on-connect>
         <burst-size>65536</burst-size>
     </limits>
     <hostname>localhost</hostname>
@@ -26,14 +21,28 @@
         <bind-address>0.0.0.0</bind-address>
     </listen-socket>
     <http-headers>
-        <header name="Access-Control-Allow-Origin" value="*" />
-        <header name="Access-Control-Allow-Methods" value="GET, OPTIONS" />
-        <header name="Access-Control-Allow-Headers"
-            value="Origin, Icy-MetaData, Range, Authorization" />
-        <header name="Access-Control-Expose-Headers"
-            value="Icy-MetaInt, Icy-MetaData, Content-Type, Content-Length" />
+        <header type="cors" name="Access-Control-Allow-Origin" value="*" />
+        <header type="cors" name="Access-Control-Allow-Methods" value="GET, OPTIONS" />
+        <header type="cors" name="Access-Control-Allow-Headers"
+            value="Origin, Content-Type, Icy-Metadata, Range, Authorization" />
+        <header type="cors" name="Access-Control-Expose-Headers"
+            value="Icy-MetaInt, Icy-Br, Icy-Description, Icy-Genre, Icy-Name, Ice-Audio-Info, Icy-Url, Icy-Metadata, Content-Type, Content-Length" />
     </http-headers>
     <mount>
         <mount-name>/stream</mount-name>
     </mount>
+    <fileserve>1</fileserve>
+    <paths>
+        <logdir>/tmp</logdir>
+        <webroot>/usr/local/icecast/share/icecast/web</webroot>
+        <adminroot>/usr/local/icecast/share/icecast/admin</adminroot>
+    </paths>
+    <logging>
+        <accesslog>-</accesslog>
+        <errorlog>-</errorlog>
+        <loglevel>information</loglevel>
+    </logging>
+    <security>
+        <chroot>false</chroot>
+    </security>
 </icecast>

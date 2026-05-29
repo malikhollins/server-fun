@@ -89,12 +89,13 @@
     }
 
     [JSInvokable]
-    public Task OnMetadataChanged(string title)
+    public Task OnMetadataChanged(string title, double timestampOffset, double timestamp)
     {
         Console.WriteLine($"Metadata changed: {title}");
+        Console.WriteLine($"Offset: {timestampOffset}, Discovered: {timestamp}");
         return Task.CompletedTask;
     }
-
+    
     private async Task PlayAudioAsync()
     {
         try

@@ -12,11 +12,11 @@ services:
       - radionetwork
 
   icecast:
-    image: "infiniteproject/icecast:latest"
+    image: "libretime/icecast:2.5.0"
     container_name: icecast
     restart: always
     volumes:
-      - ./icecast/icecast.xml:/usr/share/icecast/icecast.xml
+      - ./icecast/icecast.xml:/etc/icecast.xml
     ports:
       - "8000:8000"
     networks:
@@ -47,6 +47,15 @@ services:
     networks:
       - radionetwork
 
-networks:
-  radionetwork:
-    driver: bridge
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    environment:
+      - REDIS_ARGS=--requirepass hackme --appendonly yes
+    restart: unless-stopped
+    networks:
+      - radionetwork
