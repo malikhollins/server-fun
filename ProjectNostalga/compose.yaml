@@ -59,3 +59,12 @@ services:
     restart: unless-stopped
     networks:
       - radionetwork
+
+
+volumes:
+  redis-data:
+    driver: local
+
+networks:
+  radionetwork:
+    driver: bridge

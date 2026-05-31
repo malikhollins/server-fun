@@ -1,9 +1,10 @@
 @page "/"
 @rendermode InteractiveServer
+@inject ITrackStore TrackStore
 
 <h1> Upload file </h1>
 
-<FluentInputFile Id="audio-uploader" Mode="InputFileMode.SaveToTemporaryFolder" MaximumFileSize="@(10 * 1024 * 1024)"
+<FluentInputFile Id="audio-uploader" Mode="InputFileMode.SaveToTemporaryFolder" MaximumFileSize="@(40 * 1024 * 1024)"
                  Accept="audio/*" OnCompleted="@OnCompletedAsync">
     <div>
         <FluentIcon Icon="Icons.Regular.Size24.ArrowUpload" />
@@ -11,44 +12,33 @@
     </div>
 </FluentInputFile>
 
-@code {
-    private const string UploadsDirectory = "/etc/music";
-
+@code {    
     private async Task OnCompletedAsync(IEnumerable<FluentInputFileEventArgs> files)
     {
-        var file = files.FirstOrDefault();
-        if (file?.LocalFile == null)
-        {
-            return;
-        }
-
-        Console.WriteLine($" Uploaded {file.Name} ({file.Size} bytes)");
-
-        if (!Directory.Exists(UploadsDirectory))
-        {
-            Console.WriteLine(" - creating directory");
-            Directory.CreateDirectory(UploadsDirectory);
-        }
-        
-        var filePath = Path.Combine(UploadsDirectory, file.Name);
-
         try
         {
-            File.Copy(file.LocalFile.FullName, filePath, overwrite: true);
+            Console.WriteLine($"Uploading {files.Count()} file(s)...");
 
-            Console.WriteLine($"Copy Succeded. Exists after copy: {File.Exists(filePath)}");
+            var file = files.FirstOrDefault();
 
-            File.SetUnixFileMode(filePath,
-                UnixFileMode.UserRead |
-                UnixFileMode.UserWrite |
-                UnixFileMode.GroupRead |
-                UnixFileMode.GroupWrite |
-                UnixFileMode.OtherRead);
+            Console.WriteLine($"Received file: {file?.Name}, size: {file?.Size} bytes, name:{file?.LocalFile?.FullName}");
+
+            if (file?.LocalFile == null)
+            {
+                return;
+            }
+
+            TrackStore.UploadTrack(new Track
+            {
+                TrackId = Guid.NewGuid(),
+                Title = Path.GetFileNameWithoutExtension(file.Name),
+                Artist = "Unknown Artist",
+                Album = "Unknown Album",
+            }, file.LocalFile);
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex.ToString());
+            Console.WriteLine($"Error uploading file: {ex.Message}");
         }
-
     }
 }
