@@ -10,7 +10,7 @@ window.startIcecastPlayer = async function (url, dotnetRef) {
         console.error("Cannot start Icecast player because audio#audio was not found.");
         return;
     }
-
+    
     if (!icecastPlayer || icecastPlayer.endpoint !== url) {
         await icecastPlayer?.stop();
 
@@ -46,7 +46,6 @@ window.pauseAudio = async function () {
         await icecastPlayer.stop();
         return;
     }
-
     const audio = document.getElementById("audio");
     if (audio) audio.pause();
 };

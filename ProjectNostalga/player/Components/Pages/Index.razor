@@ -2,47 +2,58 @@
 
 @rendermode InteractiveServer
 
-@inject IJSRuntime JSRuntime
+@inject IJSRuntime JsRuntime
 @inject HttpClient HttpClient
 
-@using Microsoft.AspNetCore.SignalR.Client
 @using System.Text.Json
 @using System.Diagnostics
 
 
-<h1> Radio Player </h1>
-
-<audio id="audio">
-    <source src="http://localhost:8000/stream" type="audio/mpeg">
-</audio>
-
-
-<div> Current media playing: </div>
-
-<div> Artist: @CurrentArtist </div>
-
-<div> Track: @CurrentTrack </div>
-
-<div> Elapsed: @Elapsed / @Duration </div>
-
-<FluentProgress Width="200px" Stroke="@(ProgressStroke.Large)" @bind-value="Elapsed" max="@Duration"></FluentProgress>
-
-<FluentSlider Label="Volume" Min="0.0" Max="1.0" Step="0.1" @Value="Volume" @ValueChanged="SetVolume"></FluentSlider>
-
-<button @onclick="PlayAudioAsync"> Play Broadcast </button>
-
-<button @onclick="PauseAudioAsync"> Stop Broadcast </button>
+<FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.Center">
+    <FluentStack Orientation="Orientation.Vertical" VerticalAlignment="VerticalAlignment.Center">
+        <audio id="audio">
+            <source src="http://localhost:8000/stream" type="audio/mpeg">
+        </audio>
+        <FluentStack Class="radio-background" Orientation="Orientation.Vertical" VerticalGap="20">
+            <FluentStack Orientation="Orientation.Vertical" VerticalGap="20">
+                <span class="radio-label"> Radio </span>
+                <FluentStack Orientation="Orientation.Vertical" AlignItems="Left">
+                    <span> Artist: @CurrentArtist </span>
+                    <span> Track: @CurrentTrack </span>
+                </FluentStack>
+                <FluentStack Orientation="Orientation.Vertical" AlignItems="Center">
+                    <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.Stretch"
+                                 AlignItems="Center" Gap="10px">
+                        <FluentProgress Width="100%" Stroke="@(ProgressStroke.Large)" @bind-value="Elapsed"
+                                        max="@Duration">
+                        </FluentProgress>
+                    </FluentStack>
+                    <FluentStack HorizontalAlignment="HorizontalAlignment.SpaceBetween"
+                                 Orientation="Orientation.Horizontal">
+                        <FluentLabel> @ElapsedTime.ToString(@"mm\:ss") </FluentLabel>
+                        <FluentLabel> @TotalDuration.ToString(@"mm\:ss") </FluentLabel>
+                    </FluentStack>
+                </FluentStack>
+            </FluentStack>
+            <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.Center"
+                         VerticalGap="10">
+                <FluentButton @onclick="PlayAudioAsync"> Play </FluentButton>
+                <FluentButton @onclick="PauseAudioAsync"> Pause </FluentButton>
+            </FluentStack>
+        </FluentStack>
+    </FluentStack>
+</FluentStack>
 
 @code {
     private string CurrentTrack { get; set; } = "Loading...";
     private string CurrentArtist { get; set; } = "Loading...";
-    private int Duration { get; set; } = 0;
-    private int Elapsed { get; set; } = 0;
-    private double Volume { get; set; } = 0.5;
-    private HubConnection? _hubConnection;
-    private CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
-    private Stopwatch _stopwatch = new Stopwatch();
-
+    private int Duration { get; set; }
+    private int Elapsed { get; set; }
+    private DateTime Started { get; set; }
+    private TimeSpan ElapsedTime => TimeSpan.FromSeconds(Elapsed);
+    private TimeSpan TotalDuration => TimeSpan.FromSeconds(Duration);
+    private CancellationTokenSource? _cancellationTokenSource = new();
+    
     [JSInvokable]
     public async Task OnMetadataChanged(string title, double timestampOffset, double timestamp)
     {
@@ -52,24 +63,22 @@
             title = parts.FirstOrDefault(p => Guid.TryParse(p, out _)) ?? title;
             var message = await HttpClient.GetAsync($"http://admin:5179/api/Track/get/{title}");
             message.EnsureSuccessStatusCode();
-            if (message.Content != null)
+            var trackInfoJson = await message.Content.ReadAsStringAsync();
+            var trackInfo = JsonSerializer.Deserialize<Track>(
+                trackInfoJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            if (trackInfo != null)
             {
-                var trackInfoJson = await message.Content.ReadAsStringAsync();            
-                var trackInfo = JsonSerializer.Deserialize<Track>(
-                    trackInfoJson,new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                if (trackInfo != null)
-                {
-                    CurrentArtist = trackInfo.Artist ?? "Unknown Artist";
-                    CurrentTrack = trackInfo.Title ?? "Unknown Track";
-                    Duration = (int)trackInfo.Duration;
-                    Elapsed = (int) Math.Ceiling(timestampOffset);
-                    TickTimer();
-                    await InvokeAsync(StateHasChanged);
-                }
-                else
-                {
-                    Console.WriteLine($"Failed to deserialize track metadata for title: {title}");
-                }
+                CurrentArtist = trackInfo.Artist ?? "Unknown Artist";
+                CurrentTrack = trackInfo.Title ?? "Unknown Track";
+                Duration = (int)trackInfo.Duration;
+                Elapsed = (int)Math.Ceiling(timestampOffset);
+                Started = DateTime.UtcNow;
+                TickTimer();
+                await InvokeAsync(StateHasChanged);
+            }
+            else
+            {
+                Console.WriteLine($"Failed to deserialize track metadata for title: {title}");
             }
         }
         catch (Exception ex)
@@ -83,13 +92,12 @@
         try
         {
             var dotNetRef = DotNetObjectReference.Create(this);
-            await JSRuntime.InvokeVoidAsync("startIcecastPlayer", "http://localhost:8000/stream", dotNetRef);
+            await JsRuntime.InvokeVoidAsync("startIcecastPlayer", "http://localhost:8000/stream", dotNetRef);
             StateHasChanged();
         }
         catch (JSDisconnectedException)
         {
             Console.WriteLine("JSRuntime is disconnected. Cannot play audio.");
-            return;
         }
     }
 
@@ -97,47 +105,37 @@
     {
         try
         {
-            await JSRuntime.InvokeVoidAsync("pauseAudio");
+            await JsRuntime.InvokeVoidAsync("pauseAudio");
+            CancelTimer();
             StateHasChanged();
         }
         catch (JSDisconnectedException)
         {
             Console.WriteLine("JSRuntime is disconnected. Cannot pause audio.");
-            return;
         }
     }
 
-    private async Task SetVolumeAsync(double volume)
-    {
-        Volume = volume;
-        try
-        {
-            await JSRuntime.InvokeVoidAsync("setVolume", volume);
-            StateHasChanged();
-        }
-        catch (JSDisconnectedException)
-        {
-            Console.WriteLine("JSRuntime is disconnected. Cannot set volume.");
-            return;
-        }
-    }
-
-    private void TickTimer()
+    private void CancelTimer()
     {
         _cancellationTokenSource?.Cancel();
         _cancellationTokenSource = new CancellationTokenSource();
-        _ = TickInBackground(_cancellationTokenSource.Token);
+        StateHasChanged();
+    }
+    
+    private void TickTimer()
+    {
+         CancelTimer();
+        _ = TickInBackground(_cancellationTokenSource?.Token ?? CancellationToken.None);
     }
 
     private async Task TickInBackground(CancellationToken cancellationToken)
     {
         using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(100));
-        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-        int elapsed = 0;
-
+        var stopwatch = Stopwatch.StartNew();
+        
         while (await timer.WaitForNextTickAsync(cancellationToken))
         {
-            elapsed = (int)Math.Min(stopwatch.Elapsed.TotalSeconds, Duration);
+            var elapsed = (int)Math.Min(stopwatch.Elapsed.TotalSeconds, Duration);
             if (elapsed != Elapsed)
             {
                 Elapsed = elapsed;

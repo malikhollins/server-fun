@@ -6,7 +6,8 @@ TODO:
       ```
         Created a custom docker network that can help obfiscate localhost/urls
       ```
-- [  ] Create front-end for users to connect to 
+- [ x ] Create front-end for users to connect to 
+    - [  ] Fix pause so that it pauses, but keeps information about where you are
     - [  ] Make it look cool
     - [  ] Investigation - How to allow users to listen in background?
 - [  ] Block access to dev page, only if you have password
