@@ -39,6 +39,8 @@ app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
+app.MapHub<TrackHub>("/trackhub");
+
 app.MapControllers();
 
 app.Run();

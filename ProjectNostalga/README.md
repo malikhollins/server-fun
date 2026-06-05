@@ -7,7 +7,8 @@ TODO:
         Created a custom docker network that can help obfiscate localhost/urls
       ```
 - [ x ] Create front-end for users to connect to 
-    - [  ] Fix pause so that it pauses, but keeps information about where you are
+    - [ x ] No pause, if you want to leave, just leave
+      - [  ] V 1.5 Allow pausing
     - [  ] Make it look cool
     - [  ] Investigation - How to allow users to listen in background?
 - [  ] Block access to dev page, only if you have password

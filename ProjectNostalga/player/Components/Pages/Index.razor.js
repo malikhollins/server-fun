@@ -2,6 +2,7 @@ import IcecastMetadataPlayer from "https://esm.sh/icecast-metadata-player";
 
 let icecastPlayer;
 
+
 window.startIcecastPlayer = async function (url, dotnetRef) {
     console.log(`Starting Icecast player with URL: ${url}`);
 
@@ -10,7 +11,7 @@ window.startIcecastPlayer = async function (url, dotnetRef) {
         console.error("Cannot start Icecast player because audio#audio was not found.");
         return;
     }
-    
+
     if (!icecastPlayer || icecastPlayer.endpoint !== url) {
         await icecastPlayer?.stop();
 

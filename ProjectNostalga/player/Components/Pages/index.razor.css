@@ -2,14 +2,38 @@
 .radio-label {
     font-size: 24px;
     font-weight: bold;
-    width: 100%;
     text-align: center;
+    color: #ffffff;
+}
+
+.metadata-label {
+    font-size: 18px;
+    color: #ffffff;
 }
 
 .radio-background {
-    background: rgb(57, 57, 57);
-    padding: 20px;
+    background: rgb(37, 36, 36);
+    padding: 40px;
     border-radius: 10px;
-    width: 300px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    width: 40vw;
+    height: 40vh;
+    box-shadow: 40px 40px rgba(0, 0, 0, 0.3);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.page-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100vw;
+    height: 100vh;
+    background-color: var(--background-color, #171717);
+    --background-color: #171717;
+}
+
+::deep .radio-progress {
+    --accent-fill-rest: #6fa45d;
+    --neutral-stroke-rest: var(--background-color, #171717);
 }

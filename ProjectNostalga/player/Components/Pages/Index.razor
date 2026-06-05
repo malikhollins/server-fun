@@ -8,52 +8,66 @@
 @using System.Text.Json
 @using System.Diagnostics
 
-
-<FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.Center">
+<div class="page-container">
     <FluentStack Orientation="Orientation.Vertical" VerticalAlignment="VerticalAlignment.Center">
-        <audio id="audio">
-            <source src="http://localhost:8000/stream" type="audio/mpeg">
-        </audio>
-        <FluentStack Class="radio-background" Orientation="Orientation.Vertical" VerticalGap="20">
-            <FluentStack Orientation="Orientation.Vertical" VerticalGap="20">
-                <span class="radio-label"> Radio </span>
-                <FluentStack Orientation="Orientation.Vertical" AlignItems="Left">
-                    <span> Artist: @CurrentArtist </span>
-                    <span> Track: @CurrentTrack </span>
-                </FluentStack>
-                <FluentStack Orientation="Orientation.Vertical" AlignItems="Center">
-                    <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.Stretch"
-                                 AlignItems="Center" Gap="10px">
-                        <FluentProgress Width="100%" Stroke="@(ProgressStroke.Large)" @bind-value="Elapsed"
-                                        max="@Duration">
-                        </FluentProgress>
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment=" HorizontalAlignment.Center">
+            <audio id="audio">
+                <source src="http://localhost:8000/stream" type="audio/mpeg">
+            </audio>
+            <div class="radio-background">
+                <FluentStack Orientation="Orientation.Vertical" VerticalGap="20">
+                    <FluentStack Orientation="Orientation.Vertical" VerticalGap="20">
+                        <span class="radio-label"> Community Radio Station </span>
+                        <FluentStack Orientation="Orientation.Vertical" AlignItems="Left">
+                            <span class="metadata-label"> Artist: @CurrentArtist </span>
+                            <span class="metadata-label"> Track: @CurrentTrack </span>
+                        </FluentStack>
+                        <FluentStack Orientation="Orientation.Vertical" AlignItems="Center">
+                            <FluentStack Orientation="Orientation.Horizontal"
+                                         HorizontalAlignment="HorizontalAlignment.Stretch">
+                                <FluentProgress Class="radio-progress" Width="100%" Stroke="@(ProgressStroke.Large)"
+                                                @bind-value="Elapsed" max="@Duration">
+                                </FluentProgress>
+                            </FluentStack>
+                            <FluentStack HorizontalAlignment="HorizontalAlignment.SpaceBetween"
+                                         Orientation="Orientation.Horizontal">
+                                    <span class="metadata-label"> 
+                                        @ElapsedTime.ToString(@"mm\:ss") 
+                                    </span>
+                                    <span class="metadata-label"> 
+                                        @TotalDuration.ToString(@"mm\:ss")
+                                    </span>
+                            </FluentStack>
+                        </FluentStack>
                     </FluentStack>
-                    <FluentStack HorizontalAlignment="HorizontalAlignment.SpaceBetween"
-                                 Orientation="Orientation.Horizontal">
-                        <FluentLabel> @ElapsedTime.ToString(@"mm\:ss") </FluentLabel>
-                        <FluentLabel> @TotalDuration.ToString(@"mm\:ss") </FluentLabel>
+                    <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.Center"
+                                 VerticalGap="10">
+                        @if (!IsConnected)
+                        {
+                            <FluentButton @onclick="ConnectToRadioAsync"> Connect </FluentButton>
+                        }
+                        else
+                        {
+                            <span class="metadata-label"> Connected! </span>
+                        }
                     </FluentStack>
                 </FluentStack>
-            </FluentStack>
-            <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.Center"
-                         VerticalGap="10">
-                <FluentButton @onclick="PlayAudioAsync"> Play </FluentButton>
-                <FluentButton @onclick="PauseAudioAsync"> Pause </FluentButton>
-            </FluentStack>
+            </div>
         </FluentStack>
     </FluentStack>
-</FluentStack>
+</div>
 
 @code {
-    private string CurrentTrack { get; set; } = "Loading...";
-    private string CurrentArtist { get; set; } = "Loading...";
+    private string CurrentTrack { get; set; } = "Unavailable";
+    private string CurrentArtist { get; set; } = "Unavailable";
     private int Duration { get; set; }
     private int Elapsed { get; set; }
     private DateTime Started { get; set; }
     private TimeSpan ElapsedTime => TimeSpan.FromSeconds(Elapsed);
     private TimeSpan TotalDuration => TimeSpan.FromSeconds(Duration);
-    private CancellationTokenSource? _cancellationTokenSource = new();
-    
+    private CancellationTokenSource? _cancellationTokenSource = new CancellationTokenSource();
+    private bool IsConnected { get; set; } = false;
+
     [JSInvokable]
     public async Task OnMetadataChanged(string title, double timestampOffset, double timestamp)
     {
@@ -71,14 +85,25 @@
                 CurrentArtist = trackInfo.Artist ?? "Unknown Artist";
                 CurrentTrack = trackInfo.Title ?? "Unknown Track";
                 Duration = (int)trackInfo.Duration;
-                Elapsed = (int)Math.Ceiling(timestampOffset);
-                Started = DateTime.UtcNow;
-                TickTimer();
                 await InvokeAsync(StateHasChanged);
             }
             else
             {
                 Console.WriteLine($"Failed to deserialize track metadata for title: {title}");
+            }
+            
+            var nowPlaying = await HttpClient.GetAsync("http://admin:5179/api/Track/get/nowplaying");
+            nowPlaying.EnsureSuccessStatusCode();
+            var nowPlayingJson = await nowPlaying.Content.ReadAsStringAsync();
+            var nowPlayingInfo = JsonSerializer.Deserialize<NowPlayingInfo>(
+                nowPlayingJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            if (nowPlayingInfo != null)
+            {
+                var playedAt = DateTimeOffset.FromUnixTimeSeconds(nowPlayingInfo.PlayedAt).UtcDateTime;
+                var offset = DateTime.UtcNow - playedAt;
+                Started = DateTime.UtcNow - offset;
+                Elapsed = (int)offset.TotalSeconds;
+                TickTimer();
             }
         }
         catch (Exception ex)
@@ -87,12 +112,13 @@
         }
     }
 
-    private async Task PlayAudioAsync()
+    private async Task ConnectToRadioAsync()
     {
         try
         {
             var dotNetRef = DotNetObjectReference.Create(this);
             await JsRuntime.InvokeVoidAsync("startIcecastPlayer", "http://localhost:8000/stream", dotNetRef);
+            IsConnected = true;
             StateHasChanged();
         }
         catch (JSDisconnectedException)
@@ -121,10 +147,10 @@
         _cancellationTokenSource = new CancellationTokenSource();
         StateHasChanged();
     }
-    
+
     private void TickTimer()
     {
-         CancelTimer();
+        CancelTimer();
         _ = TickInBackground(_cancellationTokenSource?.Token ?? CancellationToken.None);
     }
 
@@ -132,7 +158,7 @@
     {
         using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(100));
         var stopwatch = Stopwatch.StartNew();
-        
+
         while (await timer.WaitForNextTickAsync(cancellationToken))
         {
             var elapsed = (int)Math.Min(stopwatch.Elapsed.TotalSeconds, Duration);
