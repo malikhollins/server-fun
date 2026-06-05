@@ -1,5 +1,7 @@
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.FluentUI.AspNetCore.Components;
 using player.Components;
+using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,6 +13,10 @@ builder.Services.AddFluentUIComponents(options =>
 {
     options.ValidateClassNames = false;
 });
+
+builder.Services.AddDataProtection()
+    .SetApplicationName("admin")
+    .PersistKeysToStackExchangeRedis(ConnectionMultiplexer.Connect("redis:6379"), "DataProtection-Keys");
 
 builder.Services.AddHttpClient();
 
@@ -28,8 +34,9 @@ app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages:
 app.UseHttpsRedirection();
 
 app.UseRouting();
-app.UseAntiforgery();
 
+app.UseAntiforgery();
+        
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();

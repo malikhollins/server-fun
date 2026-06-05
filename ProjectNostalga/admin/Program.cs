@@ -16,7 +16,9 @@ builder.Services.AddFluentUIComponents(options =>
 
 builder.Services.AddSignalR();
 builder.Services.AddControllers();
+
 builder.Services.AddDataProtection()
+    .SetApplicationName("admin")
     .PersistKeysToStackExchangeRedis(ConnectionMultiplexer.Connect("redis:6379"), "DataProtection-Keys");
     
 builder.Services.AddSingleton<IKvpStore, KvpStore>();

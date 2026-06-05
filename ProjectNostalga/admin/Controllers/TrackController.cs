@@ -26,20 +26,32 @@ public class TrackController : ControllerBase
     }
 
     [HttpPost("set/nowplaying")]
-    public async Task SendTrackInfo(string title)
+    public async Task SendTrackInfo([FromQuery] string title)
     {
-            Console.WriteLine("Received track change notification: " + title);
-            var parts = title.Split(" - ");
-            title = parts.FirstOrDefault(p => Guid.TryParse(p, out _)) ?? title;
-            var trackJson = _kvpStore.GetValue(title) ?? string.Empty;
-            var track = JsonSerializer.Deserialize<Track>(trackJson);
-            var nowPlayingInfo = new NowPlayingInfo
-            {
-                Track = track ?? new Track { Title = title },
-                PlayedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
-            };
-            _kvpStore.SetValue("nowplaying", JsonSerializer.Serialize(nowPlayingInfo));
-            await _trackHubContext.Clients.All.SendAsync("ReceiveTrackInfo", nowPlayingInfo );
+        if ( string.IsNullOrEmpty(title) )
+        {
+            Console.WriteLine("No title provided");
+            return;
+        }
+        
+        Console.WriteLine("Received track change notification: " + title);
+        var parts = title.Split(" - ");
+        title = parts.FirstOrDefault(p => Guid.TryParse(p, out _)) ?? title;
+        if ( string.IsNullOrEmpty(title) )
+        {
+            Console.WriteLine("No title provided");
+            return;
+        }
+        
+        var trackJson = _kvpStore.GetValue(title) ?? string.Empty;
+        var track = JsonSerializer.Deserialize<Track>(trackJson);
+        var nowPlayingInfo = new NowPlayingInfo
+        {
+            Track = track ?? new Track { Title = title },
+            PlayedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+        };
+        _kvpStore.SetValue("nowplaying", JsonSerializer.Serialize(nowPlayingInfo));
+        await _trackHubContext.Clients.All.SendAsync("ReceiveTrackInfo", nowPlayingInfo );
     }
     
     [HttpGet("get/nowplaying")]
@@ -47,6 +59,17 @@ public class TrackController : ControllerBase
     {
         Console.WriteLine("Received request for now playing info");
         var nowPlayingJson = _kvpStore.GetValue("nowplaying");
-        return JsonSerializer.Deserialize<NowPlayingInfo>(nowPlayingJson ?? string.Empty) ?? new NowPlayingInfo();
+        if (string.IsNullOrEmpty(nowPlayingJson))
+        {
+            Console.WriteLine("No now playing info found");
+            return new NowPlayingInfo();
+        }
+        var nowPlayingInfo = JsonSerializer.Deserialize<NowPlayingInfo>(nowPlayingJson);
+        if (nowPlayingInfo == null)
+        {
+            Console.WriteLine("Failed to deserialize now playing info");
+            return new NowPlayingInfo();
+        }
+        return nowPlayingInfo;
     }
 }

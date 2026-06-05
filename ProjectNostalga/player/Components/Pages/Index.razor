@@ -95,6 +95,7 @@
             var nowPlaying = await HttpClient.GetAsync("http://admin:5179/api/Track/get/nowplaying");
             nowPlaying.EnsureSuccessStatusCode();
             var nowPlayingJson = await nowPlaying.Content.ReadAsStringAsync();
+            Console.WriteLine($"Now playing: {nowPlayingJson}");
             var nowPlayingInfo = JsonSerializer.Deserialize<NowPlayingInfo>(
                 nowPlayingJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
             if (nowPlayingInfo != null)
@@ -157,11 +158,13 @@
     private async Task TickInBackground(CancellationToken cancellationToken)
     {
         using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(100));
+        var timeSpan = TimeSpan.FromSeconds( Elapsed );
         var stopwatch = Stopwatch.StartNew();
 
         while (await timer.WaitForNextTickAsync(cancellationToken))
         {
-            var elapsed = (int)Math.Min(stopwatch.Elapsed.TotalSeconds, Duration);
+            var totalSeconds = timeSpan.TotalSeconds + stopwatch.Elapsed.TotalSeconds;
+            var elapsed = (int)Math.Min(totalSeconds, Duration);
             if (elapsed != Elapsed)
             {
                 Elapsed = elapsed;

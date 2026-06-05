@@ -1,7 +1,4 @@
-import IcecastMetadataPlayer from "https://esm.sh/icecast-metadata-player";
-
 let icecastPlayer;
-
 
 window.startIcecastPlayer = async function (url, dotnetRef) {
     console.log(`Starting Icecast player with URL: ${url}`);
