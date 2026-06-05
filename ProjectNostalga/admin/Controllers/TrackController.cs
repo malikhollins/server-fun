@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.SignalR;
 public class TrackController : ControllerBase
 {
     private readonly IKvpStore _kvpStore;
+    private readonly IHubContext<TrackHub> _trackHubContext;
 
     public TrackController( IKvpStore kvpStore, IHubContext<TrackHub> trackHubContext)
     {
