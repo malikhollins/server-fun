@@ -1,9 +1,13 @@
 using admin.Components;
+using admin.Options;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.FluentUI.AspNetCore.Components;
 using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.Configure<RedisOptions>(builder.Configuration.GetSection("Redis"));
+builder.Services.Configure<StorageOptions>(builder.Configuration.GetSection("Storage"));
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
@@ -17,14 +21,15 @@ builder.Services.AddFluentUIComponents(options =>
 builder.Services.AddSignalR();
 builder.Services.AddControllers();
 
-var redisConnectionString = builder.Configuration["Redis:ConnectionString"] ?? "redis:6379";
+var redisOptions = builder.Configuration.GetSection("Redis").Get<RedisOptions>() ?? new RedisOptions();
 
 builder.Services.AddDataProtection()
     .SetApplicationName("admin")
-    .PersistKeysToStackExchangeRedis(ConnectionMultiplexer.Connect(redisConnectionString), "DataProtection-Keys");
+    .PersistKeysToStackExchangeRedis(ConnectionMultiplexer.Connect(redisOptions.ConnectionString), "DataProtection-Keys");
     
 builder.Services.AddSingleton<IKvpStore, KvpStore>();
 builder.Services.AddSingleton<ITrackStore, TrackStore>();
+builder.Services.AddSingleton<IMusicStore, MusicStore>();
 
 var app = builder.Build();
 

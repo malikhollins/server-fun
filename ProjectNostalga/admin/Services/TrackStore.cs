@@ -1,15 +1,17 @@
 using System.Runtime.InteropServices;
 using System.Text.Json;
-using StackExchange.Redis;
+using admin.Options;
+using Microsoft.Extensions.Options;
 
 public class TrackStore : ITrackStore
 {
-    private const string UploadsDirectory = "/etc/music";
     private readonly IKvpStore _kvpStore;
+    private readonly string _uploadsDirectory;
 
-    public TrackStore( IKvpStore kvpStore )
+    public TrackStore( IKvpStore kvpStore, IOptions<StorageOptions> options )
     {
         _kvpStore = kvpStore;
+        _uploadsDirectory = options.Value.LocalPath;
     }
 
     public void UploadTrack(Track track, FileInfo audioFile)
@@ -48,13 +50,13 @@ public class TrackStore : ITrackStore
         Console.WriteLine($"Saved track info for {audioFile.FullName}");
 
         // move file to tracks directory to trigger liquidsoap processing
-        if (!Directory.Exists(UploadsDirectory))
+        if (!Directory.Exists(_uploadsDirectory))
         {
             Console.WriteLine("Creating upload directory");
-            Directory.CreateDirectory(UploadsDirectory);
+            Directory.CreateDirectory(_uploadsDirectory);
         }
         
-        var filePath = Path.Combine(UploadsDirectory, audioFile.Name);
+        var filePath = Path.Combine(_uploadsDirectory, audioFile.Name);
 
         try
         {

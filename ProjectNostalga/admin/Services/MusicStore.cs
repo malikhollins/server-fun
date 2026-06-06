@@ -1,11 +1,23 @@
+using admin.Options;
 using FluentStorage;
 using FluentStorage.Blobs;
+using Microsoft.Extensions.Options;
 
 public class MusicStore : IMusicStore
 {
+    private readonly StorageOptions _options;
+
+    public MusicStore( IOptions<StorageOptions> options )
+    {
+        _options = options.Value;
+    }
+
     public async Task UploadFileAsync( FileInfo file )
     {
-        IBlobStorage storage = StorageFactory.Blobs.DigitalOceanSpaces( "hackme", "hackme", "hackme", "hackme" );
-        await storage.WriteFileAsync( file.FullName, file.FullName );
+        SpacesOptions spaces = _options.Spaces;
+        IBlobStorage storage = StorageFactory.Blobs.DigitalOceanSpaces(
+            spaces.AccessKey, spaces.SecretKey, spaces.Bucket, spaces.Region );
+
+        await storage.WriteFileAsync( $"tracks/{file.Name}", file.FullName );
     }
 }

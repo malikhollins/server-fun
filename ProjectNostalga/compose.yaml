@@ -41,6 +41,10 @@ services:
       - Redis__ConnectionString=redis:6379,password=hackme
       - Storage__Provider=Local
       - Storage__LocalPath=/etc/music
+      - Storage__Spaces__AccessKey=${SPACES_KEY}
+      - Storage__Spaces__SecretKey=${SPACES_SECRET}
+      - Storage__Spaces__Bucket=${SPACES_BUCKET}
+      - Storage__Spaces__Region=${SPACES_REGION:-nyc3}
     ports:
       - "5179:5179"
     group_add: 

@@ -7,6 +7,7 @@ using StackExchange.Redis;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.Configure<RadioOptions>(builder.Configuration.GetSection("Radio"));
+builder.Services.Configure<RedisOptions>(builder.Configuration.GetSection("Redis"));
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
@@ -17,11 +18,11 @@ builder.Services.AddFluentUIComponents(options =>
     options.ValidateClassNames = false;
 });
 
-var redisConnectionString = builder.Configuration["Redis:ConnectionString"] ?? "redis:6379";
+var redisOptions = builder.Configuration.GetSection("Redis").Get<RedisOptions>() ?? new RedisOptions();
 
 builder.Services.AddDataProtection()
     .SetApplicationName("admin")
-    .PersistKeysToStackExchangeRedis(ConnectionMultiplexer.Connect(redisConnectionString), "DataProtection-Keys");
+    .PersistKeysToStackExchangeRedis(ConnectionMultiplexer.Connect(redisOptions.ConnectionString), "DataProtection-Keys");
 
 builder.Services.AddHttpClient();
 

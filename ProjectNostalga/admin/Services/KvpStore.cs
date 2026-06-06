@@ -1,14 +1,14 @@
-
+using admin.Options;
+using Microsoft.Extensions.Options;
 using StackExchange.Redis;
 
 public class KvpStore : IKvpStore
 {
     private readonly ConnectionMultiplexer _redis;
 
-    public KvpStore(IConfiguration configuration)
+    public KvpStore(IOptions<RedisOptions> options)
     {
-        var connectionString = configuration["Redis:ConnectionString"] ?? "redis:6379";
-        _redis = ConnectionMultiplexer.Connect(connectionString);
+        _redis = ConnectionMultiplexer.Connect(options.Value.ConnectionString);
     }
 
     public void SetValue(string key, string value)
