@@ -5,9 +5,10 @@ public class KvpStore : IKvpStore
 {
     private readonly ConnectionMultiplexer _redis;
 
-    public KvpStore()
+    public KvpStore(IConfiguration configuration)
     {
-        _redis = ConnectionMultiplexer.Connect("redis:6379");
+        var connectionString = configuration["Redis:ConnectionString"] ?? "redis:6379";
+        _redis = ConnectionMultiplexer.Connect(connectionString);
     }
 
     public void SetValue(string key, string value)

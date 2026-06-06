@@ -1,9 +1,12 @@
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.FluentUI.AspNetCore.Components;
 using player.Components;
+using player.Options;
 using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.Configure<RadioOptions>(builder.Configuration.GetSection("Radio"));
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
@@ -14,9 +17,11 @@ builder.Services.AddFluentUIComponents(options =>
     options.ValidateClassNames = false;
 });
 
+var redisConnectionString = builder.Configuration["Redis:ConnectionString"] ?? "redis:6379";
+
 builder.Services.AddDataProtection()
     .SetApplicationName("admin")
-    .PersistKeysToStackExchangeRedis(ConnectionMultiplexer.Connect("redis:6379"), "DataProtection-Keys");
+    .PersistKeysToStackExchangeRedis(ConnectionMultiplexer.Connect(redisConnectionString), "DataProtection-Keys");
 
 builder.Services.AddHttpClient();
 

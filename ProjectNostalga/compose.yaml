@@ -1,22 +1,30 @@
 services:
   liquidsoap:  
-    image: "savonet/liquidsoap:v2.4.x-latest"
+    build:
+      context: ./liquidsoap
     container_name: liquidsoap
     restart: always
     volumes:
-      - ./liquidsoap/script.liq:/etc/liquidsoap/script.liq:ro
       - ./music:/etc/music:rw
-    command: "/etc/liquidsoap/script.liq"
+    environment:
+      - PLAYLIST_URL=/etc/music
+      - ICECAST_HOST=icecast
+      - ICECAST_PORT=8000
+      - ICECAST_SOURCE_PASSWORD=${ICECAST_SOURCE_PASSWORD:-hackme}
+      - ICECAST_MOUNT=/stream
+      - ADMIN_BASE_URL=http://admin:5179
     user: "liquidsoap:3000"
     networks:
       - radionetwork
 
   icecast:
-    image: "libretime/icecast:2.5.0"
+    build:
+      context: ./icecast
     container_name: icecast
     restart: always
-    volumes:
-      - ./icecast/icecast.xml:/etc/icecast.xml
+    environment:
+      - ICECAST_SOURCE_PASSWORD=${ICECAST_SOURCE_PASSWORD:-hackme}
+      - ICECAST_ADMIN_PASSWORD=${ICECAST_ADMIN_PASSWORD:-hackme}
     ports:
       - "8000:8000"
     networks:
@@ -29,6 +37,10 @@ services:
       - ./music:/etc/music:rw
     environment:
       - ASPNETCORE_URLS=http://0.0.0.0:5179
+      - ASPNETCORE_ENVIRONMENT=Development
+      - Redis__ConnectionString=redis:6379,password=hackme
+      - Storage__Provider=Local
+      - Storage__LocalPath=/etc/music
     ports:
       - "5179:5179"
     group_add: 
@@ -42,6 +54,10 @@ services:
       context: ./player
     environment:
       - ASPNETCORE_URLS=http://0.0.0:5178
+      - ASPNETCORE_ENVIRONMENT=Development
+      - Redis__ConnectionString=redis:6379,password=hackme
+      - Radio__StreamUrl=http://localhost:8000/stream
+      - Radio__AdminApiBaseUrl=http://admin:5179
     ports:
       - "5178:5178"
     networks:

@@ -4,15 +4,18 @@
 
 @inject IJSRuntime JsRuntime
 @inject HttpClient HttpClient
+@inject IOptions<RadioOptions> RadioOptions
 
 @using System.Text.Json
 @using System.Diagnostics
+@using Microsoft.Extensions.Options
+@using player.Options
 
 <div class="page-container">
     <FluentStack Orientation="Orientation.Vertical" VerticalAlignment="VerticalAlignment.Center">
         <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment=" HorizontalAlignment.Center">
             <audio id="audio">
-                <source src="http://localhost:8000/stream" type="audio/mpeg">
+                <source src="@RadioOptions.Value.StreamUrl" type="audio/mpeg">
             </audio>
             <div class="radio-background">
                 <FluentStack Orientation="Orientation.Vertical" VerticalGap="20">
@@ -31,12 +34,12 @@
                             </FluentStack>
                             <FluentStack HorizontalAlignment="HorizontalAlignment.SpaceBetween"
                                          Orientation="Orientation.Horizontal">
-                                    <span class="metadata-label"> 
-                                        @ElapsedTime.ToString(@"mm\:ss") 
-                                    </span>
-                                    <span class="metadata-label"> 
-                                        @TotalDuration.ToString(@"mm\:ss")
-                                    </span>
+                                <span class="metadata-label">
+                                    @ElapsedTime.ToString(@"mm\:ss")
+                                </span>
+                                <span class="metadata-label">
+                                    @TotalDuration.ToString(@"mm\:ss")
+                                </span>
                             </FluentStack>
                         </FluentStack>
                     </FluentStack>
@@ -62,54 +65,78 @@
     private string CurrentArtist { get; set; } = "Unavailable";
     private int Duration { get; set; }
     private int Elapsed { get; set; }
-    private DateTime Started { get; set; }
     private TimeSpan ElapsedTime => TimeSpan.FromSeconds(Elapsed);
     private TimeSpan TotalDuration => TimeSpan.FromSeconds(Duration);
     private CancellationTokenSource? _cancellationTokenSource = new CancellationTokenSource();
     private bool IsConnected { get; set; } = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        await ProcessNowPlayingAsync();
+    }
 
     [JSInvokable]
     public async Task OnMetadataChanged(string title, double timestampOffset, double timestamp)
     {
         try
         {
-            var parts = title.Split(" - ");
-            title = parts.FirstOrDefault(p => Guid.TryParse(p, out _)) ?? title;
-            var message = await HttpClient.GetAsync($"http://admin:5179/api/Track/get/{title}");
-            message.EnsureSuccessStatusCode();
-            var trackInfoJson = await message.Content.ReadAsStringAsync();
-            var trackInfo = JsonSerializer.Deserialize<Track>(
-                trackInfoJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-            if (trackInfo != null)
+            if ( !IsConnected )
             {
-                CurrentArtist = trackInfo.Artist ?? "Unknown Artist";
-                CurrentTrack = trackInfo.Title ?? "Unknown Track";
-                Duration = (int)trackInfo.Duration;
-                await InvokeAsync(StateHasChanged);
+                // ignore the first metadata changed so that we sync properly
+                IsConnected = true;
+                return;
             }
-            else
-            {
-                Console.WriteLine($"Failed to deserialize track metadata for title: {title}");
-            }
-            
-            var nowPlaying = await HttpClient.GetAsync("http://admin:5179/api/Track/get/nowplaying");
-            nowPlaying.EnsureSuccessStatusCode();
-            var nowPlayingJson = await nowPlaying.Content.ReadAsStringAsync();
-            Console.WriteLine($"Now playing: {nowPlayingJson}");
-            var nowPlayingInfo = JsonSerializer.Deserialize<NowPlayingInfo>(
-                nowPlayingJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-            if (nowPlayingInfo != null)
-            {
-                var playedAt = DateTimeOffset.FromUnixTimeSeconds(nowPlayingInfo.PlayedAt).UtcDateTime;
-                var offset = DateTime.UtcNow - playedAt;
-                Started = DateTime.UtcNow - offset;
-                Elapsed = (int)offset.TotalSeconds;
-                TickTimer();
-            }
+
+            await GetTrackInfoFromMetadataAsync( title );
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error fetching track metadata: {ex.Message}");
+        }
+    }
+    
+    private async Task GetTrackInfoFromMetadataAsync(string title)
+    {
+        var parts = title.Split(" - ");
+        title = parts.FirstOrDefault(p => Guid.TryParse(p, out _ )) ?? title;
+        var message = await HttpClient.GetAsync($"{RadioOptions.Value.AdminApiBaseUrl}/api/Track/get/{title}");
+        message.EnsureSuccessStatusCode();
+        var trackInfoJson = await message.Content.ReadAsStringAsync();
+        var trackInfo = JsonSerializer.Deserialize<Track>(
+            trackInfoJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        if (trackInfo != null)
+        {
+            CurrentArtist = trackInfo.Artist ?? "Unknown Artist";
+            CurrentTrack = trackInfo.Title ?? "Unknown Track";
+            Duration = (int)trackInfo.Duration;
+            Elapsed = 0;
+            TickTimer();
+            await InvokeAsync(StateHasChanged);
+        }
+        else
+        {
+            Console.WriteLine($"Failed to deserialize track metadata for title: {title}");
+        }
+    }
+
+    private async Task ProcessNowPlayingAsync()
+    {
+        var nowPlaying = await HttpClient.GetAsync($"{RadioOptions.Value.AdminApiBaseUrl}/api/Track/get/nowplaying");
+        nowPlaying.EnsureSuccessStatusCode();
+        var nowPlayingJson = await nowPlaying.Content.ReadAsStringAsync();
+        Console.WriteLine($"Now playing: {nowPlayingJson}");
+        var nowPlayingInfo = JsonSerializer.Deserialize<NowPlayingInfo>(
+            nowPlayingJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        if (nowPlayingInfo != null)
+        {
+            var playedAt = DateTimeOffset.FromUnixTimeSeconds(nowPlayingInfo.PlayedAt).UtcDateTime;
+            var offset = DateTime.UtcNow - playedAt;
+            Elapsed = (int) offset.TotalSeconds;
+            Duration = (int) nowPlayingInfo.Track.Duration;
+            CurrentArtist = nowPlayingInfo.Track.Artist ?? "Unknown";
+            CurrentTrack = nowPlayingInfo.Track.Title ?? "Unknown";
+            TickTimer();
         }
     }
 
@@ -118,8 +145,7 @@
         try
         {
             var dotNetRef = DotNetObjectReference.Create(this);
-            await JsRuntime.InvokeVoidAsync("startIcecastPlayer", "http://localhost:8000/stream", dotNetRef);
-            IsConnected = true;
+            await JsRuntime.InvokeVoidAsync("startIcecastPlayer", RadioOptions.Value.StreamUrl, dotNetRef);
             StateHasChanged();
         }
         catch (JSDisconnectedException)
@@ -158,7 +184,7 @@
     private async Task TickInBackground(CancellationToken cancellationToken)
     {
         using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(100));
-        var timeSpan = TimeSpan.FromSeconds( Elapsed );
+        var timeSpan = TimeSpan.FromSeconds(Elapsed);
         var stopwatch = Stopwatch.StartNew();
 
         while (await timer.WaitForNextTickAsync(cancellationToken))

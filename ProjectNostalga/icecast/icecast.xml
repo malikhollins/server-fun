@@ -11,10 +11,13 @@
     <hostname>localhost</hostname>
     <location>Earth</location>
     <admin>admin@localhost</admin>
+    <!-- Passwords are injected at startup from the ICECAST_SOURCE_PASSWORD,
+         ICECAST_ADMIN_USERNAME and ICECAST_ADMIN_PASSWORD env vars/secrets.
+         The placeholders below are only used if those vars are unset. -->
     <authentication>
-        <source-password>hackme</source-password>
+        <source-password>CHANGEME</source-password>
         <admin-user>admin</admin-user>
-        <admin-password>hackme</admin-password>
+        <admin-password>CHANGEME</admin-password>
     </authentication>
     <listen-socket>
         <port>8000</port>

@@ -1,44 +1,24 @@
 @page "/"
+
 @rendermode InteractiveServer
-@inject ITrackStore TrackStore
 
-<h1> Upload file </h1>
 
-<FluentInputFile Id="audio-uploader" Mode="InputFileMode.SaveToTemporaryFolder" MaximumFileSize="@(40 * 1024 * 1024)"
-                 Accept="audio/*" OnCompleted="@OnCompletedAsync">
-    <div>
-        <FluentIcon Icon="Icons.Regular.Size24.ArrowUpload" />
-        <p>Drag and drop files here or click to browse</p>
+<div class="dev-page">
+    <div class="header">
+        <FluentStack HorizontalAlignment="HorizontalAlignment.SpaceBetween">
+            <span> Community Radio Station Dashboard </span>
+            <FluentButton> Upload </FluentButton>
+        </FluentStack>
     </div>
-</FluentInputFile>
+    <div class="dev-metadata">
+        <div class="content">
+            <span> This is my content </span>
+        </div>
+        <div class="files">
+            <span> These are my files </span>
+        </div>
+    </div>
+</div>
 
-@code {    
-    private async Task OnCompletedAsync(IEnumerable<FluentInputFileEventArgs> files)
-    {
-        try
-        {
-            Console.WriteLine($"Uploading {files.Count()} file(s)...");
-
-            var file = files.FirstOrDefault();
-
-            Console.WriteLine($"Received file: {file?.Name}, size: {file?.Size} bytes, name:{file?.LocalFile?.FullName}");
-
-            if (file?.LocalFile == null)
-            {
-                return;
-            }
-
-            TrackStore.UploadTrack(new Track
-            {
-                TrackId = Guid.NewGuid(),
-                Title = Path.GetFileNameWithoutExtension(file.Name),
-                Artist = "Unknown Artist",
-                Album = "Unknown Album",
-            }, file.LocalFile);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error uploading file: {ex.Message}");
-        }
-    }
+@code {
 }

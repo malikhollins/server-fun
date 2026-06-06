@@ -17,9 +17,11 @@ builder.Services.AddFluentUIComponents(options =>
 builder.Services.AddSignalR();
 builder.Services.AddControllers();
 
+var redisConnectionString = builder.Configuration["Redis:ConnectionString"] ?? "redis:6379";
+
 builder.Services.AddDataProtection()
     .SetApplicationName("admin")
-    .PersistKeysToStackExchangeRedis(ConnectionMultiplexer.Connect("redis:6379"), "DataProtection-Keys");
+    .PersistKeysToStackExchangeRedis(ConnectionMultiplexer.Connect(redisConnectionString), "DataProtection-Keys");
     
 builder.Services.AddSingleton<IKvpStore, KvpStore>();
 builder.Services.AddSingleton<ITrackStore, TrackStore>();
