@@ -13,6 +13,11 @@ services:
       - ICECAST_SOURCE_PASSWORD=${ICECAST_SOURCE_PASSWORD:-hackme}
       - ICECAST_MOUNT=/stream
       - ADMIN_BASE_URL=http://admin:5179
+      # --- DigitalOcean Spaces ---
+      - AWS_ENDPOINT=tmp
+      - AWS_REGION=tmp
+      - AWS_ACCESS_KEY_ID=${SPACES_KEY}
+      - AWS_SECRET_ACCESS_KEY=${SPACES_SECRET}
     user: "liquidsoap:3000"
     networks:
       - radionetwork

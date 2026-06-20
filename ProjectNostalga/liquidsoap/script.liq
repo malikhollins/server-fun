@@ -4,6 +4,8 @@ icecast_port = int_of_string(environment.get("ICECAST_PORT", default="8000"))
 icecast_password = environment.get("ICECAST_SOURCE_PASSWORD", default="hackme")
 icecast_mount = environment.get("ICECAST_MOUNT", default="/stream")
 admin_base_url = environment.get("ADMIN_BASE_URL", default="http://admin:5179")
+settings.protocol.aws.endpoint := environment.get("AWS_ENDPOINT", default="")
+settings.protocol.aws.region := environment.get("AWS_REGION", default="")
 
 audio_source = ref(blank())
 
