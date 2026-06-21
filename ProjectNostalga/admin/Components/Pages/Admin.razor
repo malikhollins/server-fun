@@ -27,7 +27,7 @@
         <AuthorizeView Roles="admin">
             <ChildContent Context="authorize_view_context"> 
                 <span> Allowlist for emails </span>
-                <EditForm OnValidSubmit="UploadEmailToAllowlistAsync">
+                <EditForm OnValidSubmit="UploadEmailToAllowlistAsync" Model="EmailToAllow">
                     <label> Email to add </label>
                     <input @bind-value="EmailToAllow" s/>
                     <button> Add email </button>
