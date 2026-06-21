@@ -21,13 +21,11 @@ builder.Services
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
 
-builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-    .AddCookie(options =>
-    {
-        options.ExpireTimeSpan = TimeSpan.FromMinutes(20);
-        options.SlidingExpiration = true;
-        options.AccessDeniedPath = "/Forbidden/";
-    });
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.LoginPath = "/";
+    options.AccessDeniedPath = "/forbidden";
+});
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
@@ -40,7 +38,13 @@ builder.Services.AddFluentUIComponents(options =>
 
 builder.Services.AddSignalR();
 builder.Services.AddControllers();
+builder.Services.AddHttpClient();
 
+var redisOptions = builder.Configuration.GetSection("Redis").Get<RedisOptions>() ?? new RedisOptions();
+
+builder.Services.AddDataProtection()
+    .SetApplicationName("admin")
+    .PersistKeysToStackExchangeRedis(ConnectionMultiplexer.Connect(redisOptions.ConnectionString), "DataProtection-Keys");
 
 builder.Services.AddSingleton<IKvpStore, KvpStore>();
 builder.Services.AddSingleton<ITrackStore, TrackStore>();
@@ -74,5 +78,7 @@ app.MapRazorComponents<App>()
 app.MapHub<TrackHub>("/trackhub");
 
 app.MapControllers();
+
+await SeedAuthData.InitializeAsync(app.Services);
 
 app.Run();

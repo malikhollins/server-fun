@@ -40,7 +40,10 @@ services:
       context: ./admin
     volumes:
       - ./music:/etc/music:rw
+      - ./data:/data
     environment:
+      - ADMIN_EMAIL=test@gmail.com
+      - ADMIN_PASS=Pass-123
       - ASPNETCORE_URLS=http://0.0.0.0:5179
       - ASPNETCORE_ENVIRONMENT=Development
       - Redis__ConnectionString=redis:6379,password=hackme
@@ -84,8 +87,7 @@ services:
     restart: unless-stopped
     networks:
       - radionetwork
-
-
+      
 volumes:
   redis-data:
     driver: local

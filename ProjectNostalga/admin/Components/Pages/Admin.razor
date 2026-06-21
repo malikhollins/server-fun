@@ -1,0 +1,46 @@
+@page "/dashboard"
+
+@using Microsoft.AspNetCore.Authorization
+
+@using Microsoft.AspNetCore.Components.Authorization
+
+@attribute [Authorize(Roles = "admin,allowed" )]
+
+@rendermode InteractiveServer
+@inject HttpClient Http
+
+<div class="dev-page">
+    <div class="header">
+        <FluentStack HorizontalAlignment="HorizontalAlignment.SpaceBetween">
+            <span> Community Radio Station Dashboard </span>
+            <FluentButton> Upload </FluentButton>
+        </FluentStack>
+    </div>
+    <div class="dev-metadata">
+        <div class="content">
+            <span> This is my content </span>
+        </div>
+        <div class="files">
+            <span> These are my files </span>
+        </div>
+    </div>
+        <div>
+        <AuthorizeView Roles="admin">
+            <ChildContent Context="authorize_view_context"> 
+                <span> Allowlist for emails </span>
+                <EditForm OnValidSubmit="UploadEmailToAllowlistAsync">
+                    <label> Email to add </label>
+                    <input @bind-value="EmailToAllow" s/>
+                    <button> Add email </button>
+                </EditForm>
+            </ChildContent>
+        </AuthorizeView>
+    </div>
+</div>
+
+@code {
+    public string EmailToAllow { get; set; } = string.Empty;
+
+    public Task UploadEmailToAllowlistAsync() =>
+        Http.PostAsJsonAsync<string>("http://localhost:5179/auth/allow", EmailToAllow);
+}

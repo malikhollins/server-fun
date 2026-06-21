@@ -1,0 +1,22 @@
+
+.content {
+   width: 70vw; 
+}
+
+.files {
+    width: 30vw;
+}
+
+.header {
+    width: 100vw;
+}
+
+.dev-page {
+    display: flex;
+    flex-direction: column;
+}
+
+.dev-metadata {
+    display: flex;
+    flex-direction: row;
+ }
