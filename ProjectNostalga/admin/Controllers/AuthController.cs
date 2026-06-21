@@ -33,7 +33,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
-    public async Task<IActionResult> Login(LoginForm form)
+    public async Task<IActionResult> Login( [FromForm] LoginForm form)
     {
         var user = await _userManager.FindByEmailAsync(form.Email);
         if (user == null)

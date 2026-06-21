@@ -7,13 +7,13 @@
 @rendermode InteractiveServer
 
 
-<EditForm OnValidSubmit="LoginAsync" Model="LoginForm">
+<form method="post" action="/auth/login">
     <label> email </label>
-    <input @bind-value="LoginForm.Email" />
+    <input name="Email" type="email" @bind-value="LoginForm.Email" />
     <label> password </label>
-    <input @bind-value="LoginForm.Password" />
-    <button> Login </button>
-</EditForm>
+    <input name="Password" type="password" @bind-value="LoginForm.Password" />
+    <button type="submit"> Login </button>
+</form>
 
 @code {
 
