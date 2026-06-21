@@ -401,3 +401,9 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+# SQLite runtime data (persist on server / DO volume, not in git)
+*.db
+*.db-shm
+*.db-wal
+data/

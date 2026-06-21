@@ -1,13 +1,12 @@
 @page "/dashboard"
 
 @using Microsoft.AspNetCore.Authorization
-
 @using Microsoft.AspNetCore.Components.Authorization
 
 @attribute [Authorize(Roles = "admin,allowed" )]
 
 @rendermode InteractiveServer
-@inject HttpClient Http
+@inject ApplicationDbContext Db
 
 <div class="dev-page">
     <div class="header">
@@ -41,6 +40,15 @@
 @code {
     public string EmailToAllow { get; set; } = string.Empty;
 
-    public Task UploadEmailToAllowlistAsync() =>
-        Http.PostAsJsonAsync<string>("http://localhost:5179/auth/allow", EmailToAllow);
+    public async Task UploadEmailToAllowlistAsync()
+    {
+        if ( string.IsNullOrWhiteSpace(EmailToAllow) )
+        {
+            return;
+        }
+
+        await Db.AllowedEmails.AddAsync(new AllowedEmail { Email = EmailToAllow.Trim() });
+        await Db.SaveChangesAsync();
+        EmailToAllow = string.Empty;
+    }
 }

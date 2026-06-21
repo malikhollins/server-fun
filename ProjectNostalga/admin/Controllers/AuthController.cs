@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -25,10 +26,17 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("allow")]
-    public async Task<IActionResult> AddAllowedEmailAsync( string email )
+    [Authorize(Roles = "admin")]
+    public async Task<IActionResult> AddAllowedEmailAsync( [FromBody] string email )
     {
-        var newEmail = new AllowedEmail{ Email = email };
+        if ( string.IsNullOrWhiteSpace(email) )
+        {
+            return BadRequest();
+        }
+
+        var newEmail = new AllowedEmail{ Email = email.Trim() };
         await _db.AllowedEmails.AddAsync( newEmail );
+        await _db.SaveChangesAsync();
         return Ok();
     }
 

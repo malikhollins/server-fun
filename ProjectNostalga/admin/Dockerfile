@@ -1,7 +1,8 @@
 # Use the official .NET core runtime as a parent image
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 WORKDIR /app
-EXPOSE 80
+EXPOSE 8080
+ENV ASPNETCORE_ENVIRONMENT=Production
 
 # Use the SDK image to build the app
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
