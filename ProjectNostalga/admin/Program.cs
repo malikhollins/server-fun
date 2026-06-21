@@ -13,7 +13,14 @@ builder.Services.Configure<RedisOptions>(builder.Configuration.GetSection("Redis
 builder.Services.Configure<StorageOptions>(builder.Configuration.GetSection("Storage"));
 
 builder.Services.AddAuthorization();
-builder.Services.AddIdentityApiEndpoints<IdentityUser>().AddEntityFrameworkStores<DbContext>();
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services
+    .AddIdentity<IdentityUser, IdentityRole>()
+    .AddEntityFrameworkStores<ApplicationDbContext>()
+    .AddDefaultTokenProviders();
+
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
@@ -21,9 +28,6 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.SlidingExpiration = true;
         options.AccessDeniedPath = "/Forbidden/";
     });
-
-builder.service.AddDbContext<ApplicationDbContext>(options =>
-        options.UseSqlite(Configuration.GetConnectionString("ConnectionName")));
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
@@ -37,12 +41,7 @@ builder.Services.AddFluentUIComponents(options =>
 builder.Services.AddSignalR();
 builder.Services.AddControllers();
 
-var redisOptions = builder.Configuration.GetSection("Redis").Get<RedisOptions>() ?? new RedisOptions();
 
-builder.Services.AddDataProtection()
-    .SetApplicationName("admin")
-    .PersistKeysToStackExchangeRedis(ConnectionMultiplexer.Connect(redisOptions.ConnectionString), "DataProtection-Keys");
-    
 builder.Services.AddSingleton<IKvpStore, KvpStore>();
 builder.Services.AddSingleton<ITrackStore, TrackStore>();
 builder.Services.AddSingleton<IMusicStore, MusicStore>();
