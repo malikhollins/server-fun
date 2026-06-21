@@ -54,11 +54,12 @@ public class AuthController : ControllerBase
             }
         }
         
-        var userName = form.Email?.Split('@')[0] ?? string.Empty;
+        var signInResult = await _signInManager.PasswordSignInAsync(
+            user.UserName ?? form.Email,
+            form.Password,
+            isPersistent: true,
+            lockoutOnFailure: false);
 
-        Console.WriteLine( "Attempting to login...", userName );
-
-        var signInResult = await _signInManager.PasswordSignInAsync(userName, form.Password, isPersistent: true, lockoutOnFailure: false );
-        return signInResult.Succeeded ? Ok() : NotFound();
+        return signInResult.Succeeded ? Redirect("/dashboard") : Redirect("/");
     }
 }

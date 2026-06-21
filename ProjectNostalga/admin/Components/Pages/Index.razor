@@ -1,35 +1,10 @@
 @page "/"
-@using Microsoft.AspNetCore.Components.Authorization
-@using static System.Net.WebRequestMethods
-@inject AuthenticationStateProvider AuthStateProvider
-@inject NavigationManager NavigationManager
-@inject HttpClient Http
 @rendermode InteractiveServer
-
 
 <form method="post" action="/auth/login">
     <label> email </label>
-    <input name="Email" type="email" @bind-value="LoginForm.Email" />
+    <input name="Email" type="email" />
     <label> password </label>
-    <input name="Password" type="password" @bind-value="LoginForm.Password" />
-    <button type="submit"> Login </button>
+    <input name="Password" type="password" />
+    <button type="submit">Login</button>
 </form>
-
-@code {
-
-    private LoginForm LoginForm { get; set; } = new();
-
-    private async Task LoginAsync()
-    {
-        var result = await Http.PostAsJsonAsync<LoginForm>("http://localhost:5179/auth/login", LoginForm);
-        if ( result != null && result.IsSuccessStatusCode )
-        {
-            Console.WriteLine( "Logged in..." );
-            NavigationManager.NavigateTo(uri: "/dashboard");
-        }
-        else
-        {
-            Console.WriteLine( "Failed to log in..." );
-        }
-    }
-}
